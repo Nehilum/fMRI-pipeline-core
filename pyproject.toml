@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "neuro-mod"
+version = "0.1.0"
+description = "A robust fMRI pipeline for BIDS conversion, pre-processing wrapping, and statistical analysis."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "typer>=0.9.0",
+    "rich>=13.0.0",
+    "pandas>=2.0.0",
+    "openpyxl>=3.1.0",
+    "pydicom>=2.4.0",
+    "pybids>=0.16.4",
+    "nilearn>=0.10.2",
+    "pyyaml>=6.0"
+]
+
+[project.scripts]
+neuro-mod = "neuro_mod.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/neuro_mod"]
