@@ -1,0 +1,46 @@
+Bootstrap: docker
+From: python:3.10-slim
+
+%post
+    apt-get update && apt-get install -y --no-install-recommends \
+        wget \
+        ca-certificates \
+        git \
+        libgl1-mesa-glx \
+        libglib2.0-0 \
+        unzip \
+        && rm -rf /var/lib/apt/lists/*
+
+    # Install dcm2niix (required for BIDS conversion)
+    # We download the latest stable release
+    wget https://github.com/rordenlab/dcm2niix/releases/latest/download/dcm2niix_lnx.zip
+    unzip dcm2niix_lnx.zip && mv dcm2niix /usr/local/bin/ && rm dcm2niix_lnx.zip
+
+    # Install the neuro-mod package
+    # Note: We assume the source code is bind-mounted during build or we install from a repository
+    pip install --no-cache-dir \
+        typer \
+        rich \
+        pandas \
+        openpyxl \
+        pydicom \
+        pybids \
+        nilearn \
+        pyyaml \
+        scikit-learn \
+        scipy \
+        nibabel
+
+    # Add any other specific dependencies here
+
+%labels
+    Author Nehilum
+    Version v0.1.0
+    Description "fMRI Pipeline Core: BIDS Converter + fMRIPrep Wrapper"
+
+%help
+    This container provides the 'neuro-mod' CLI tool for fMRI data processing.
+    Usage:
+    singularity run neuro-mod.sif [command] [args]
+    Example: 
+    singularity run neuro-mod.sif bids prepare --config configs/config.yaml
