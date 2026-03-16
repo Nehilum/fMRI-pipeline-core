@@ -122,6 +122,10 @@ class MappingGenerator:
                 self._append_excel_row(excel_rows, entry, bids_id, exp_id, ses_label, protocol_name, mtaas_results)
 
         # 5. 导出 Excel
+        if not excel_rows:
+            logger.warning("No entries to export to Excel. Skipping audit sheet generation.")
+            return None
+
         df = pd.DataFrame(excel_rows)
         draft_filename = self.config['paths'].get('audit_draft_filename', "audit_sheet_auto.xlsx")
         output_xlsx = Path(self.config['paths']['work_dir']) / draft_filename

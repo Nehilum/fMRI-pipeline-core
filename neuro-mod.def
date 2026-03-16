@@ -57,3 +57,10 @@ From: python:3.10-slim-bookworm
 
     Usage for Analysis:
     singularity run neuro-mod.sif analyze first-level --config /configs/server_test.yaml
+
+%runscript
+    # Increase the path to include local app if bind-mounted to /app
+    if [ -d "/app" ]; then
+        export PYTHONPATH=$PYTHONPATH:/app
+    fi
+    exec python3 -m neuro_mod.cli "$@"

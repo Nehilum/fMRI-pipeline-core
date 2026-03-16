@@ -33,9 +33,8 @@ paths:
 # ==========================================
 tools:
   dcm2niix:
-    # 如果 dcm2niix 不在系统 PATH 环境变量中，请填写绝对路径
-    # 例如 windows: "C:/Program Files/mricrogl/dcm2niix.exe"
-    executable: "C:/Users/hyang/anaconda3/Library/bin/dcm2niix.exe"
+    # Inside the Singularity container, dcm2niix is already in the PATH
+    executable: "dcm2niix"
     
     # 传递给 dcm2niix 的命令行参数
     # 建议始终保留 "%p_%s" 以防止不同 Series 重名
