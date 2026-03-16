@@ -96,6 +96,9 @@ class ConversionEntry:
     
     source: SeriesRecord   
     target: Optional[BidsTargetInfo] = None
+
+    # [新增] 时间元数据
+    time_meta: TimeMetadata = field(default_factory=TimeMetadata)
     
     # 状态追踪
     status: ProcessStatus = ProcessStatus.PENDING
