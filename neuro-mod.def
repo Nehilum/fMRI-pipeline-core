@@ -1,12 +1,12 @@
 Bootstrap: docker
-From: python:3.10-slim
+From: python:3.10-slim-bookworm
 
 %post
     apt-get update && apt-get install -y --no-install-recommends \
         wget \
         ca-certificates \
         git \
-        libgl1-mesa-glx \
+        libgl1 \
         libglib2.0-0 \
         unzip \
         build-essential \
