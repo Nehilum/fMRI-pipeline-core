@@ -1,0 +1,45 @@
+# End-to-end example with real (downsampled) test data used by fMRIPrep CI.
+#
+# 1) Fetch dataset (real NIfTI, not empty placeholders):
+#    powershell -ExecutionPolicy Bypass -File scripts/fetch_fmriprep_testdata.ps1 -Dataset ds005
+#
+# 2) Provide a FreeSurfer license (required by fmriprep):
+#    - Set fmriprep.fs_license_file below, OR
+#    - Export FS_LICENSE on the host (path to license.txt)
+#
+# 3) Run fmriprep + extract:
+#    .venv\Scripts\python -m fmri_modulation.fmriprep.cli --config configs/fmriprep_example_ds005.yaml run-extract
+
+paths:
+  bids_dir: ".local/fmriprep-testdata/ds005"
+  derivatives_dir: "outputs/derivatives_ds005"
+  work_dir: "outputs/work_ds005"
+  arrays_dir: "outputs/arrays_ds005"
+
+fmriprep:
+  engine: "singularity"
+  # Singularity image (local .sif or OCI URI). Keep version aligned with your pipeline.
+  image: "docker://nipreps/fmriprep:24.0.0"
+  # fmriprep requires a FreeSurfer license file even with --fs-no-reconall.
+  fs_license_file: ".local/secrets/freesurfer/license.txt"
+  participant_labels: ["01"]
+  extra_args:
+    - "--fs-no-reconall"
+    - "--skip-bids-validation"
+    - "--output-spaces"
+    - "MNI152NLin2009cAsym"
+    - "--nthreads"
+    - "4"
+    - "--omp-nthreads"
+    - "4"
+
+extract:
+  select:
+    space: "MNI152NLin2009cAsym"
+    desc: "preproc"
+    suffix: "bold"
+    extension: ".nii.gz"
+    subjects: ["01"]
+  output:
+    transpose: "txyz"
+    dtype: "float32"

@@ -1,0 +1,44 @@
+# Example with real (downsampled) test data used by fMRIPrep CI.
+#
+# 1) Fetch dataset (real NIfTI, not empty placeholders):
+#    powershell -ExecutionPolicy Bypass -File scripts/fetch_fmriprep_testdata.ps1 -Dataset ds210
+#
+# NOTE:
+# ds210 has only 5 timepoints in the BOLD series, so fmriprep will skip BOLD processing.
+# Use `configs/fmriprep_example_ds005.yaml` for an end-to-end run that produces preprocessed BOLD.
+
+paths:
+  bids_dir: ".local/fmriprep-testdata/ds210"
+  derivatives_dir: "outputs/derivatives_ds210"
+  work_dir: "outputs/work_ds210"
+  arrays_dir: "outputs/arrays_ds210"
+
+fmriprep:
+  engine: "singularity"
+  # Singularity image (local .sif or OCI URI). Keep version aligned with your pipeline.
+  image: "docker://nipreps/fmriprep:24.0.0"
+  # fmriprep requires a FreeSurfer license file even with --fs-no-reconall.
+  # Set either this path, or export FS_LICENSE on the host.
+  # fs_license_file: "C:/path/to/license.txt"
+  # Set to a single subject to keep runtime reasonable.
+  # If participants.tsv differs, adjust accordingly.
+  participant_labels: ["02"]
+  extra_args:
+    - "--fs-no-reconall"
+    - "--skip-bids-validation"
+    - "--output-spaces"
+    - "MNI152NLin2009cAsym"
+    - "--nthreads"
+    - "4"
+    - "--omp-nthreads"
+    - "4"
+
+extract:
+  select:
+    space: "MNI152NLin2009cAsym"
+    desc: "preproc"
+    suffix: "bold"
+    extension: ".nii.gz"
+  output:
+    transpose: "txyz"
+    dtype: "float32"

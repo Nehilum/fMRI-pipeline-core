@@ -1,0 +1,40 @@
+# Fake fmriprep output + ROI extraction demo (no fmriprep run).
+#
+# 1) Create a fake fmriprep output and ROI mask:
+#    .venv\Scripts\python scripts/make_fake_fmriprep_output.py --derivatives-dir outputs/derivatives_fake
+#    .venv\Scripts\python scripts/make_fake_roi_mask.py --ref outputs/derivatives_fake/fmriprep/sub-01/ses-1/func/sub-01_ses-1_task-rest_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz --out outputs/roi_masks/demo_mask.nii.gz
+#
+# 2) Extract arrays + ROI outputs:
+#    .venv\Scripts\python -m fmri_modulation.fmriprep.cli --config configs/fmriprep_example_fake_roi.yaml extract
+
+paths:
+  bids_dir: "unused"
+  derivatives_dir: "outputs/derivatives_fake"
+  work_dir: "outputs/work_fake"
+  arrays_dir: "outputs/arrays_fake"
+
+fmriprep:
+  engine: "singularity"
+  image: "unused"
+
+extract:
+  select:
+    space: "MNI152NLin2009cAsym"
+    desc: "preproc"
+    suffix: "bold"
+    extension: ".nii.gz"
+    subjects: ["01"]
+  output:
+    transpose: "txyz"
+    dtype: "float32"
+  roi:
+    enabled: true
+    masks:
+      - name: "demo"
+        path: "outputs/roi_masks/demo_mask.nii.gz"
+        kind: "mask"
+        resample: "nearest"
+        outputs:
+          mean_timeseries: true
+          voxel_timeseries: false
+          masked_volume: false

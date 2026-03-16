@@ -1,0 +1,44 @@
+# Example: BIDS structure smoke test using bids-standard/bids-examples (7t_trt)
+#
+# 1) Fetch test data:
+#    powershell -ExecutionPolicy Bypass -File scripts/fetch_bids_examples.ps1
+#
+# 2) Generate fmriprep command (dry-run):
+#    python -m fmri_modulation.fmriprep.cli --config configs/fmriprep_example_7t_trt.yaml run --dry-run
+#
+# NOTE:
+# bids-examples contains empty placeholder *.nii.gz in many datasets, so fmriprep will fail if you try to run it.
+# For end-to-end testing with real NIfTI, use `configs/fmriprep_example_ds210.yaml` instead.
+
+paths:
+  bids_dir: ".local/bids-examples/7t_trt"
+  derivatives_dir: "outputs/derivatives_7t_trt"
+  work_dir: "outputs/work_7t_trt"
+  arrays_dir: "outputs/arrays_7t_trt"
+
+fmriprep:
+  engine: "singularity"
+  # Singularity image (local .sif or OCI URI). Keep version aligned with your pipeline.
+  image: "docker://nipreps/fmriprep:24.0.0"
+  participant_labels: ["01"]
+  extra_args:
+    - "--fs-no-reconall"
+    - "--skip-bids-validation"
+    - "--output-spaces"
+    - "MNI152NLin2009cAsym"
+    - "--nthreads"
+    - "4"
+    - "--omp-nthreads"
+    - "4"
+
+extract:
+  # fmriprep_dir defaults to <derivatives_dir>/fmriprep if omitted
+  select:
+    space: "MNI152NLin2009cAsym"
+    desc: "preproc"
+    suffix: "bold"
+    extension: ".nii.gz"
+    subjects: ["01"]
+  output:
+    transpose: "txyz"
+    dtype: "float32"

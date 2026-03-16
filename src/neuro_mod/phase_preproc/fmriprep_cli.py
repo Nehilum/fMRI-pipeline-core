@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import sys
+import traceback
+from datetime import datetime
 from pathlib import Path
+from typing import Callable, TextIO
 
 from .config import load_config
 from .container import build_container_command, format_command, run_command
@@ -26,7 +30,7 @@ def _sanity_check_bids_niftis(bids_dir: Path, *, max_files: int = 50) -> None:
             break
 
 
-def _warn_if_missing_fs_license(cfg: object) -> None:
+def _warn_if_missing_fs_license(cfg: object, *, log_print: Callable[..., None] | None = None) -> None:
     try:
         fmriprep_cfg = getattr(cfg, "fmriprep")
     except Exception:
@@ -41,51 +45,97 @@ def _warn_if_missing_fs_license(cfg: object) -> None:
 
     if os.environ.get("FS_LICENSE"):
         return
-    print("WARNING: FreeSurfer license not set. fmriprep typically requires it even with --fs-no-reconall.")
-    print("         Set `fmriprep.fs_license_file` in the YAML config, or export `FS_LICENSE` on the host.")
+    log = log_print or print
+    log("WARNING: FreeSurfer license not set. fmriprep typically requires it even with --fs-no-reconall.")
+    log("         Set `fmriprep.fs_license_file` in the YAML config, or export `FS_LICENSE` on the host.")
+
+
+def _resolve_fmriprep_dir(cfg: object, *, log_print: Callable[..., None] | None = None) -> Path:
+    try:
+        paths = getattr(cfg, "paths")
+        extract_cfg = getattr(cfg, "extract")
+    except Exception as exc:
+        raise ValueError("Invalid config: missing paths/extract") from exc
+
+    if not isinstance(paths, dict) or not isinstance(extract_cfg, dict):
+        raise ValueError("Invalid config: expected mappings at paths/extract")
+
+    derivatives_dir = Path(paths["derivatives_dir"])
+    explicit = extract_cfg.get("fmriprep_dir")
+    fmriprep_dir = Path(explicit) if explicit else (derivatives_dir / "fmriprep")
+
+    if fmriprep_dir.exists():
+        return fmriprep_dir
+
+    if derivatives_dir.exists():
+        has_dataset_desc = (derivatives_dir / "dataset_description.json").exists()
+        has_subjects = any(derivatives_dir.glob("sub-*"))
+        if has_dataset_desc or has_subjects:
+            log = log_print or print
+            log(f"NOTE: fmriprep_dir not found at {fmriprep_dir}; using {derivatives_dir}")
+            return derivatives_dir
+
+    return fmriprep_dir
+
+
+def _open_log_file(command: str) -> tuple[TextIO, Callable[..., None], Path]:
+    log_dir = Path("outputs") / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_path = log_dir / f"{timestamp}_{command}.log"
+    log_file = log_path.open("w", encoding="utf-8")
+
+    def log_print(*args: object, **kwargs: object) -> None:
+        sep = kwargs.get("sep", " ")
+        end = kwargs.get("end", "\n")
+        msg = str(sep).join(str(a) for a in args)
+        print(msg, end=end, flush=True)
+        log_file.write(msg + str(end))
+        log_file.flush()
+
+    return log_file, log_print, log_path
 
 
 def _cmd_run(args: argparse.Namespace) -> None:
     cfg = load_config(args.config)
-    _sanity_check_bids_niftis(Path(cfg.paths["bids_dir"]))
-    _warn_if_missing_fs_license(cfg)
     Path(cfg.paths["derivatives_dir"]).mkdir(parents=True, exist_ok=True)
     Path(cfg.paths["work_dir"]).mkdir(parents=True, exist_ok=True)
     cmd = build_container_command(paths=cfg.paths, fmriprep=cfg.fmriprep)
     if args.dry_run:
-        print(format_command(cmd))
+        args.log_print(format_command(cmd))
         return
-    run_command(cmd)
+    _sanity_check_bids_niftis(Path(cfg.paths["bids_dir"]))
+    _warn_if_missing_fs_license(cfg, log_print=args.log_print)
+    run_command(cmd, log_print=args.log_print)
 
 
 def _cmd_extract(args: argparse.Namespace) -> None:
     cfg = load_config(args.config)
-    derivatives_dir = Path(cfg.paths["derivatives_dir"])
-    fmriprep_dir = Path(cfg.extract.get("fmriprep_dir") or (derivatives_dir / "fmriprep"))
+    fmriprep_dir = _resolve_fmriprep_dir(cfg, log_print=args.log_print)
     out_dir = Path(cfg.paths["arrays_dir"])
     out_dir.mkdir(parents=True, exist_ok=True)
     written = extract_arrays_from_fmriprep(fmriprep_dir=fmriprep_dir, out_dir=out_dir, extract_cfg=cfg.extract)
-    print(f"Wrote {len(written)} file(s) under {out_dir}")
+    args.log_print(f"Wrote {len(written)} file(s) under {out_dir}")
 
 
 def _cmd_run_extract(args: argparse.Namespace) -> None:
     cfg = load_config(args.config)
-    _sanity_check_bids_niftis(Path(cfg.paths["bids_dir"]))
-    _warn_if_missing_fs_license(cfg)
     Path(cfg.paths["derivatives_dir"]).mkdir(parents=True, exist_ok=True)
     Path(cfg.paths["work_dir"]).mkdir(parents=True, exist_ok=True)
     cmd = build_container_command(paths=cfg.paths, fmriprep=cfg.fmriprep)
     if args.dry_run:
-        print(format_command(cmd))
-    else:
-        run_command(cmd)
+        args.log_print(format_command(cmd))
+        return
 
-    derivatives_dir = Path(cfg.paths["derivatives_dir"])
-    fmriprep_dir = Path(cfg.extract.get("fmriprep_dir") or (derivatives_dir / "fmriprep"))
+    _sanity_check_bids_niftis(Path(cfg.paths["bids_dir"]))
+    _warn_if_missing_fs_license(cfg, log_print=args.log_print)
+    run_command(cmd, log_print=args.log_print)
+
+    fmriprep_dir = _resolve_fmriprep_dir(cfg, log_print=args.log_print)
     out_dir = Path(cfg.paths["arrays_dir"])
     out_dir.mkdir(parents=True, exist_ok=True)
     written = extract_arrays_from_fmriprep(fmriprep_dir=fmriprep_dir, out_dir=out_dir, extract_cfg=cfg.extract)
-    print(f"Wrote {len(written)} file(s) under {out_dir}")
+    args.log_print(f"Wrote {len(written)} file(s) under {out_dir}")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -110,7 +160,15 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> None:
     parser = build_parser()
     args = parser.parse_args(argv)
-    args.func(args)
+    log_file, log_print, _ = _open_log_file(args.command)
+    try:
+        args.log_print = log_print
+        args.func(args)
+    except Exception:
+        log_print(traceback.format_exc(), end="")
+        sys.exit(1)
+    finally:
+        log_file.close()
 
 
 if __name__ == "__main__":

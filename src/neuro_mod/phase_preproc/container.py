@@ -5,7 +5,7 @@ import shlex
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Callable, Iterable
 
 
 @dataclass(frozen=True)
@@ -46,9 +46,8 @@ def build_container_command(*, paths: dict, fmriprep: dict) -> list[str]:
     container_paths = ContainerPaths()
 
     # NOTE:
-    # - For nipreps/fmriprep Docker images, ENTRYPOINT is already `fmriprep`
-    # - For Singularity `run`, the runscript typically also invokes `fmriprep`
-    # So we pass only arguments here to avoid accidentally doing `fmriprep fmriprep ...`.
+    # Most fmriprep images already invoke `fmriprep` in the runscript/entrypoint.
+    # Pass only arguments here to avoid accidentally doing `fmriprep fmriprep ...`.
     inner_cmd: list[str] = [
         container_paths.bids_dir,
         container_paths.out_dir,
@@ -66,54 +65,60 @@ def build_container_command(*, paths: dict, fmriprep: dict) -> list[str]:
     derivatives_dir_abs = _ensure_abs(derivatives_dir)
     work_dir_abs = _ensure_abs(work_dir)
 
-    if engine == "singularity":
-        cleanenv = bool(fmriprep.get("cleanenv", True))
-        cmd = ["singularity", "run"]
-        if cleanenv:
-            cmd.append("--cleanenv")
-        cmd.extend(
-            [
-                "-B",
-                f"{bids_dir_abs}:{container_paths.bids_dir}:ro",
-                "-B",
-                f"{derivatives_dir_abs}:{container_paths.out_dir}",
-                "-B",
-                f"{work_dir_abs}:{container_paths.work_dir}",
-            ]
-        )
-        if fs_license_file:
-            cmd.extend(["-B", f"{_ensure_abs(str(fs_license_file))}:{container_paths.fs_license_file}:ro"])
-        cmd.append(str(image))
-        cmd.extend(inner_cmd)
-        return cmd
+    if engine != "singularity":
+        raise ValueError(f"Unsupported engine: {engine} (expected singularity)")
 
-    if engine == "docker":
-        cmd = [
-            "docker",
-            "run",
-            "--rm",
-            "-v",
+    cleanenv = bool(fmriprep.get("cleanenv", True))
+    cmd = ["singularity", "run"]
+    if cleanenv:
+        cmd.append("--cleanenv")
+    cmd.extend(
+        [
+            "-B",
             f"{bids_dir_abs}:{container_paths.bids_dir}:ro",
-            "-v",
+            "-B",
             f"{derivatives_dir_abs}:{container_paths.out_dir}",
-            "-v",
+            "-B",
             f"{work_dir_abs}:{container_paths.work_dir}",
         ]
-        if fs_license_file:
-            cmd.extend(["-v", f"{_ensure_abs(str(fs_license_file))}:{container_paths.fs_license_file}:ro"])
-        cmd.append(str(image))
-        cmd.extend(inner_cmd)
-        return cmd
-
-    raise ValueError(f"Unsupported engine: {engine} (expected singularity|docker)")
+    )
+    if fs_license_file:
+        cmd.extend(["-B", f"{_ensure_abs(str(fs_license_file))}:{container_paths.fs_license_file}:ro"])
+    cmd.append(str(image))
+    cmd.extend(inner_cmd)
+    return cmd
 
 
 def format_command(cmd: Iterable[str]) -> str:
     return " ".join(shlex.quote(part) for part in cmd)
 
 
-def run_command(cmd: list[str], *, env: dict[str, str] | None = None) -> None:
+def run_command(
+    cmd: list[str],
+    *,
+    env: dict[str, str] | None = None,
+    log_print: Callable[..., None] | None = None,
+) -> None:
     merged_env = os.environ.copy()
     if env:
         merged_env.update(env)
-    subprocess.run(cmd, check=True, env=merged_env)
+    if log_print is None:
+        subprocess.run(cmd, check=True, env=merged_env)
+        return
+
+    proc = subprocess.Popen(
+        cmd,
+        env=merged_env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+    )
+    assert proc.stdout is not None
+    for line in proc.stdout:
+        log_print(line, end="")
+    ret = proc.wait()
+    if ret != 0:
+        raise subprocess.CalledProcessError(ret, cmd)
+
+

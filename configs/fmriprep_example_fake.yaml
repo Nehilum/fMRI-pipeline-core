@@ -1,0 +1,28 @@
+# Quick local smoke test without running fmriprep.
+#
+# 1) Create a fake fmriprep output:
+#    .venv\Scripts\python scripts/make_fake_fmriprep_output.py --derivatives-dir outputs/derivatives_fake
+#
+# 2) Extract arrays:
+#    .venv\Scripts\python -m fmri_modulation.fmriprep.cli --config configs/fmriprep_example_fake.yaml extract
+
+paths:
+  bids_dir: "unused"
+  derivatives_dir: "outputs/derivatives_fake"
+  work_dir: "outputs/work_fake"
+  arrays_dir: "outputs/arrays_fake"
+
+fmriprep:
+  engine: "singularity"
+  image: "unused"
+
+extract:
+  select:
+    space: "MNI152NLin2009cAsym"
+    desc: "preproc"
+    suffix: "bold"
+    extension: ".nii.gz"
+    subjects: ["01"]
+  output:
+    transpose: "txyz"
+    dtype: "float32"
