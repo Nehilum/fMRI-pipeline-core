@@ -9,15 +9,17 @@ From: python:3.10-slim
         libgl1-mesa-glx \
         libglib2.0-0 \
         unzip \
+        build-essential \
         && rm -rf /var/lib/apt/lists/*
 
-    # Install dcm2niix (required for BIDS conversion)
-    # We download the latest stable release
+    # Install dcm2niix (Production version)
     wget https://github.com/rordenlab/dcm2niix/releases/latest/download/dcm2niix_lnx.zip
     unzip dcm2niix_lnx.zip && mv dcm2niix /usr/local/bin/ && rm dcm2niix_lnx.zip
 
-    # Install the neuro-mod package
-    # Note: We assume the source code is bind-mounted during build or we install from a repository
+    # Upgrade pip
+    pip install --no-cache-dir --upgrade pip
+
+    # Install Core Dependencies
     pip install --no-cache-dir \
         typer \
         rich \
@@ -25,22 +27,33 @@ From: python:3.10-slim
         openpyxl \
         pydicom \
         pybids \
-        nilearn \
         pyyaml \
+        nilearn \
         scikit-learn \
         scipy \
-        nibabel
+        nibabel \
+        matplotlib \
+        seaborn
 
-    # Add any other specific dependencies here
+    # Create workspace directories
+    mkdir -p /raw /sourcedata /derivatives /work /configs /scripts
+
+%environment
+    export LC_ALL=C.UTF-8
+    export LANG=C.UTF-8
+    export PATH=/usr/local/bin:$PATH
 
 %labels
-    Author Nehilum
-    Version v0.1.0
-    Description "fMRI Pipeline Core: BIDS Converter + fMRIPrep Wrapper"
+    Author "Nehilum & Antigravity"
+    Version "v1.0.0-alpha"
+    Description "fMRI-pipeline-core: BIDS Converter (Phase 1-5) and Analysis Suite (Phase 7+)"
 
 %help
-    This container provides the 'neuro-mod' CLI tool for fMRI data processing.
-    Usage:
-    singularity run neuro-mod.sif [command] [args]
-    Example: 
-    singularity run neuro-mod.sif bids prepare --config configs/config.yaml
+    This is the official container for the fMRI-pipeline-core.
+    It handles everything EXCEPT the heavy fMRIPrep preprocessing.
+
+    Usage for BIDS Conversion:
+    singularity run neuro-mod.sif bids prepare --config /configs/server_test.yaml
+
+    Usage for Analysis:
+    singularity run neuro-mod.sif analyze first-level --config /configs/server_test.yaml
