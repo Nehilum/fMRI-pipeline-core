@@ -21,17 +21,13 @@ paths:
 
   # EVENTS: Behavioral logs for Phase 5 injection
   # TODO: Verify where your .tsv/log files reside
-  events_source: "/storage/data/MRI/MRI_Modulation/raw_behavioral_logs"
+  events_source: "/storage/data/MRI/MRI_Modulation/test_tmp/events_tsv"
 
   # OUTPUT: Final BIDS compliant directory
   bids_output_dir: "/storage/data/MRI/MRI_Modulation/fmri-pipeline-test/bids"
-  
-  # 辅助文件
-  mapping_file: "./data/mapping/bids_structure_with_mapping.xlsx"
-  events_from_dir: "./data/events"
 
   # 行为日志汇总文件 (用于 Phase 3 决策)
-  behavior_logs_summary: "F:/fMRI_Modulation/events_generator/time_audit/audit_group_summary.csv"
+  behavior_logs_summary: "/storage/data/MRI/MRI_Modulation/test_tmp/time_audit/audit_group_summary.csv"
 # ==========================================
 # 2. 工具配置 (External Tools)
 # ==========================================
