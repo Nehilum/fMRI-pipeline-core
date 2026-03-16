@@ -4,7 +4,7 @@
 paths:
   # INPUT: Start from your raw ZIP files
   # TODO: Verify the absolute path to your ZIP files on the server
-  raw_data_dir: "/storage/data/MRI/MRI_Modulation/raw_zip_test"
+  raw_data_dir: "/storage/data/MRI/MRI_Modulation/flywheel/nict_nishimoto/fbs_nishimoto"
   
   # INTERMEDIATE: DICOM unpacking area
   dicom_dir: "/storage/data/MRI/MRI_Modulation/fmri-pipeline-test/dicom"
