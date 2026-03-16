@@ -1,0 +1,264 @@
+# ==========================================
+# Server Test Configuration (Blueprinted for /storage)
+# ==========================================
+paths:
+  # INPUT: Start from your raw ZIP files
+  # TODO: Verify the absolute path to your ZIP files on the server
+  raw_data_dir: "/storage/data/MRI/MRI_Modulation/raw_zip_test"
+  
+  # INTERMEDIATE: DICOM unpacking area
+  dicom_dir: "/storage/data/MRI/MRI_Modulation/fmri-pipeline-test/dicom"
+  
+  # WORKING AREA: Log, checkpoints, and NIfTI pool
+  work_dir: "/storage/data/MRI/MRI_Modulation/fmri-pipeline-test/work"
+  nifti_pool: "/storage/data/MRI/MRI_Modulation/fmri-pipeline-test/work/nifti_pool"
+  
+  # AUDIT SPREADSHEETS (Phases 1-3)
+  audit_draft_filename: "audit_sheet_auto.xlsx" 
+  audit_review_filename: "audit_sheet_reviewed.xlsx" 
+  audit_final_filename: "audit_sheet_final.xlsx"
+  intended_for_filename: "intended_for_map.json"
+
+  # EVENTS: Behavioral logs for Phase 5 injection
+  # TODO: Verify where your .tsv/log files reside
+  events_source: "/storage/data/MRI/MRI_Modulation/raw_behavioral_logs"
+
+  # OUTPUT: Final BIDS compliant directory
+  bids_output_dir: "/storage/data/MRI/MRI_Modulation/fmri-pipeline-test/bids"
+  
+  # 辅助文件
+  mapping_file: "./data/mapping/bids_structure_with_mapping.xlsx"
+  events_from_dir: "./data/events"
+
+  # 行为日志汇总文件 (用于 Phase 3 决策)
+  behavior_logs_summary: "F:/fMRI_Modulation/events_generator/time_audit/audit_group_summary.csv"
+# ==========================================
+# 2. 工具配置 (External Tools)
+# ==========================================
+tools:
+  dcm2niix:
+    # 如果 dcm2niix 不在系统 PATH 环境变量中，请填写绝对路径
+    # 例如 windows: "C:/Program Files/mricrogl/dcm2niix.exe"
+    executable: "C:/Users/hyang/anaconda3/Library/bin/dcm2niix.exe"
+    
+    # 传递给 dcm2niix 的命令行参数
+    # 建议始终保留 "%p_%s" 以防止不同 Series 重名
+    flags: 
+      - "-z" 
+      - "y"         # gzip compress
+      - "-f"
+      - "%p_%s"     # filename format: Protocol_SeriesNum
+      - "-b"
+      - "y"         # create json
+      - "-ba"
+      - "y"         # create bval/bvec (for DTI)
+
+# ==========================================
+# 3. 映射规则 (Phase 3 Mapping)
+# ==========================================
+mapping:
+  # 任务映射：ProtocolName 中包含 Key -> 判定为 Value
+  # 替代了旧代码中脆性的 split('v') 逻辑
+  task_mapping:
+    "478": "per"
+    "294": "mod"
+    "326": "ecog"
+
+  # === [新增] 行为数据映射 (用于 Phase 3.5 最终决定) ===
+  # 逻辑：按顺序匹配，匹配到即停止 (Priority Match)
+  behavior_patterns:
+    - pattern: "mod_sbj"    # 匹配文件名中包含此字符串
+      task: "mod"
+    - pattern: "ecog_sbj"
+      task: "ecog"
+    - pattern: "sbj_"       # 兜底规则 (对应你的 per 任务)
+      task: "per"
+      
+  # 被试映射：原始 ID -> BIDS ID & Experiment ID
+  subject_mapping:
+    H875574:
+      bids_id: "sub-01"
+      experiment_id: "YO01"
+      age: 22          # 新增
+      sex: "M"         # 新增 (M/F/O)
+    H162031:
+      bids_id: "sub-02"
+      experiment_id: "NY02"
+      age: 22
+      sex: "M"  
+    H563995:
+      bids_id: "sub-03"
+      experiment_id: "SF03"
+      age: 22
+      sex: "M" 
+
+# 启发式文件夹分类规则
+# 对应旧代码 valid_folders = ["BOLD", "Fieldmap", "T1"]
+heuristics:
+  # 键是 ProtocolName/SeriesDescription 的起始字符串
+  # 值是 BIDS datatype
+  # Time in seconds to group fmap files (mag1, mag2, phase) into one 'run'
+  fmap_grouping_threshold: 90
+
+  # Mapping volume counts (Scan duration) to Task Names
+  # Format: volume_count: task_name
+  volume_to_task:
+    478: "per"
+    294: "mod"
+    326: "ecog"
+    
+  # Mapping string patterns in behavior filenames to Task Names
+  behavior_patterns:
+    "mod_sbj": "mod"
+    "ecog_sbj": "ecog"
+    "sbj_": "per"
+
+  prefixes:
+    "BOLD": "func"
+    "Fieldmap": "fmap"
+    "T1": "anat"
+  # [新增] Fieldmap 文件后缀识别规则 (Phase 5 使用) 
+  # 逻辑：如果文件名包含 Key，则添加对应的 BIDS Suffix
+  fmap_parts:
+    "ph": "phasediff"
+    "phase": "phasediff"
+    "e1": "magnitude1"
+    "e2": "magnitude2"
+    # 默认兜底为空，或者根据需要配置
+  # [选项] 运行号计数策略
+  # Legacy: True (旧逻辑，Run ID 在 Session 间累加，如 ses-1 run-01, ses-2 run-02)
+  # Standard: False (BIDS 标准，Run ID 在 Session 内重置，如 ses-1 run-01, ses-2 run-01)
+  run_counter_cumulative: False
+
+# ==========================================
+# 5. 元数据修正 (Phase 5 Assembly)
+# ==========================================
+json_update:
+  default_fields:
+    phasediff:
+      EchoTime1: 0.00738
+      EchoTime2: 0.00984
+  # IntendedFor 的匹配策略
+  # options: "session_all" (全匹配), "time_sequential" (旧脚本的时间序贯逻辑)
+  intended_for_strategy: "time_sequential"
+# ==========================================
+# 6. 系统配置
+# ==========================================
+global:
+  log_level: "INFO"
+
+# ==========================================
+# 7. BIDS 全局元数据 (BIDS Global Metadata)
+# ==========================================
+bids_metadata:
+  # dataset_description.json
+  description:
+    Name: "fMRI Modulation Study"
+    BIDSVersion: "1.8.0"
+    Authors: 
+      - "H. Yang"
+    Acknowledgements: "We thank all the participants and staff involved in the study."
+    DatasetDOI: "" # Optional
+
+  # task-xx_bold.json (公共参数)
+  # 这里的 Key 必须对应 Mapping 中的 Task Name (per, mod, ecog)
+  tasks:
+    per:
+      TaskName: "perception"
+      RepetitionTime: 1.0
+      EchoTime: 0.03
+      FlipAngle: 62
+      Instructions: "Watch the images presented on the screen. Press the button when you see a repetive stimulus."
+    
+    mod:
+      TaskName: "modulation_images_new"
+      RepetitionTime: 1.0
+      EchoTime: 0.03
+      FlipAngle: 62
+      Instructions: "Imagine the object instructed by the text..."
+    
+    ecog:
+      TaskName: "modulation_images_ecog"
+      RepetitionTime: 1.0
+      EchoTime: 0.03
+      FlipAngle: 62
+      Instructions: "Imagine the object instructed by the text..."
+
+# ==========================================
+# 8. 时间解析配置 (New)
+# ==========================================
+time_config:
+  # 允许 Zip 文件名时间与 JSON 内部时间的偏差阈值 (秒)
+  diff_threshold_seconds: 60
+  
+  # 文件夹日期格式 (用于 date_folder)
+  folder_date_format: "%Y%m%d"
+  # 文件夹日期格式 (用于 Zip 文件名解析出的日期，通常是 YYYYMMDD)
+  zip_date_format: "%Y%m%d"
+  
+  # 正则表达式：用于从 Zip 文件名中提取时间
+  # 匹配: 20xx年, 2位月, 2位日, 2位时, 2位分, 2位秒
+  # Group: 1=Year, 2=Month, 3=Day, 4=Hour, 5=Min, 6=Sec
+  zip_regex_pattern: "(20\\d{2})(\\d{2})(\\d{2})(\\d{2})(\\d{2})(\\d{2})"
+
+# ------------------------------------------------------------------------------
+# Excel Schema Definition (The Single Source of Truth)
+# ------------------------------------------------------------------------------
+excel_schema:
+  # 1. Column Definitions (Map logical names to Excel headers)
+  columns:
+    # --- Identification & Source (Phase 3a) ---
+    scan_id: "Scan_ID"
+    experiment_id: "Experiment_ID"
+    subject_raw: "Subject_ID_Raw"
+    subject_bids: "Subject_ID_BIDS"
+    session_bids: "BIDS_Session"
+    protocol_name: "Protocol_Name"
+    date_folder: "Date_Folder"
+    
+    # --- Time Metadata (Phase 3a) ---
+    canonical_timestamp: "Canonical_Timestamp"
+    sidecar_time_raw: "Sidecar_Time_Raw"
+
+    # --- Audit & Decision (Phase 3a) ---
+    inclusion_status: "Inclusion_Status"  # Key Column
+    decision_source: "Decision_Source"
+    decision_rationale: "Decision_Rationale"
+    discard_prefix: "Discard_Prefix"
+    
+    # --- MTAAS / Behavior Info (Phase 3a) ---
+    behavior_filename: "Behavior_FileName"
+    task_name_audit: "Task_Name"          # Task name identified during audit
+    mtaas_status: "MTAAS_Status"
+    mtaas_offset: "MTAAS_Offset"
+
+    # --- Physical Files (Added in Phase 3b) ---
+    source_path_abs: "Source_Path_Abs"    # Absolute path to .nii.gz
+    source_json_abs: "Source_JSON_Abs"    # Absolute path to .json
+    warnings: "Warnings"
+
+    # --- BIDS Construction (Calculated in Phase 3b) ---
+    datatype: "DataType"                  # func, anat, fmap, etc.
+    suffix: "Suffix"                      # bold, T1w, phasediff
+    bids_task: "BIDS_Task"                # Final task label for filename
+    bids_run: "BIDS_Run"                  # run-01
+    bids_path: "BIDS_Path"                # Final relative BIDS path
+    processing_note: "Processing_Note"    # e.g. dir-AP
+
+    # --- IntendedFor Mapping (Added in Phase 3b) ---
+    fmap_set_id: "Fmap_Set_ID"            # Internal ID for grouping fmaps
+    applied_fmap_set: "Applied_Fmap_Set"  # Which fmap set applies to this func
+
+  # 2. Enumerations (Valid values for logic logic)
+  enums:
+    status:
+      include: "Include"
+      exclude: "Exclude"
+    
+    datatype:
+      func: "func"
+      anat: "anat"
+      dwi: "dwi"
+      fmap: "fmap"
+      discard: "discard"
+      derived: "derived"
