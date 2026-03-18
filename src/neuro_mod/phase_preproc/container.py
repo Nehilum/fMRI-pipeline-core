@@ -25,7 +25,9 @@ def _as_list(value: object) -> list[str]:
 
 
 def _ensure_abs(path: str) -> str:
-    return str(Path(path).expanduser().resolve())
+    # Always resolve to absolute path and force forward slashes (Linux style)
+    p = Path(path).expanduser().resolve()
+    return str(p).replace("\\", "/")
 
 
 def build_container_command(*, paths: dict, fmriprep: dict) -> list[str]:
