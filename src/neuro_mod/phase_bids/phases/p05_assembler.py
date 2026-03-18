@@ -147,12 +147,23 @@ class Assembler:
         # 不需要 GroupBy，不需要 Sort，直接线性执行
         for idx, row in self.df.iterrows():
             
+            # 0. 检查是否跳过 ( NaN path or Excluded )
+            bids_path_raw = row.get(self.schema.col.bids_path)
+            status = str(row.get(self.schema.col.inclusion_status, "")).lower()
+            if pd.isna(bids_path_raw) or status != self.schema.status.include.lower():
+                continue
+
             # 1. 准备路径
-            # Step 2: 替换列名
-            src_nii = Path(row[self.schema.col.source_path_abs])
-            src_json = Path(row[self.schema.col.source_json_abs])
+            src_nii_raw = row.get(self.schema.col.source_path_abs)
+            if pd.isna(src_nii_raw):
+                continue
+                
+            src_nii = Path(str(src_nii_raw))
             
-            rel_path = row[self.schema.col.bids_path] # e.g., sub-01/ses-01/func/sub-01_ses-01_task-rest_bold.nii.gz
+            src_json_raw = row.get(self.schema.col.source_json_abs)
+            src_json = Path(str(src_json_raw)) if pd.notna(src_json_raw) else None
+            
+            rel_path = str(bids_path_raw)
             dst_nii = self.bids_root / rel_path
             dst_json = dst_nii.with_suffix('').with_suffix('.json') # 确保 json 和 nii 同名
 
@@ -161,8 +172,7 @@ class Assembler:
                 success_count += 1
                 
                 # 3. 复制并修补 JSON
-                # 即使源 JSON 不存在，有时候也需要生成一个空的吗？通常 dcm2niix 都会生成。
-                if src_json.exists():
+                if src_json and src_json.exists():
                     self.transfer_file(src_json, dst_json)
                     self.patch_json_sidecar(dst_json, row, rel_path)
                 
