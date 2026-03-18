@@ -98,13 +98,30 @@ def _open_log_file(command: str) -> tuple[TextIO, Callable[..., None], Path]:
 
 def _cmd_run(args: argparse.Namespace) -> None:
     cfg = load_config(args.config)
-    Path(cfg.paths["derivatives_dir"]).mkdir(parents=True, exist_ok=True)
-    Path(cfg.paths["work_dir"]).mkdir(parents=True, exist_ok=True)
-    cmd = build_container_command(paths=cfg.paths, fmriprep=cfg.fmriprep)
+    
+    # Validation with better error messages
+    paths = cfg.paths
+    if "derivatives_dir" not in paths:
+        print("ERROR: 'derivatives_dir' missing in yaml config under 'paths:'.")
+        print("Please add: derivatives_dir: '/path/to/output'")
+        sys.exit(1)
+        
+    # Fallback: if bids_dir is missing, try bids_output_dir (used in Phase 1-5)
+    if "bids_dir" not in paths and "bids_output_dir" in paths:
+        paths["bids_dir"] = paths["bids_output_dir"]
+    
+    if "bids_dir" not in paths:
+        print("ERROR: 'bids_dir' missing in yaml config under 'paths:'.")
+        sys.exit(1)
+
+    Path(paths["derivatives_dir"]).mkdir(parents=True, exist_ok=True)
+    Path(paths["work_dir"]).mkdir(parents=True, exist_ok=True)
+    
+    cmd = build_container_command(paths=paths, fmriprep=cfg.fmriprep)
     if args.dry_run:
         args.log_print(format_command(cmd))
         return
-    _sanity_check_bids_niftis(Path(cfg.paths["bids_dir"]))
+    _sanity_check_bids_niftis(Path(paths["bids_dir"]))
     _warn_if_missing_fs_license(cfg, log_print=args.log_print)
     run_command(cmd, log_print=args.log_print)
 

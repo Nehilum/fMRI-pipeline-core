@@ -23,11 +23,51 @@ paths:
   # TODO: Verify where your .tsv/log files reside
   events_source: "/storage/data/MRI/MRI_Modulation/test_tmp/events_tsv"
 
-  # OUTPUT: Final BIDS compliant directory
+  # OUTPUT: Final BIDS compliant directory (Input for fMRIPrep)
   bids_output_dir: "/storage/data/MRI/MRI_Modulation/fmri-pipeline-test/bids"
+  bids_dir: "/storage/data/MRI/MRI_Modulation/fmri-pipeline-test/bids" # Explicitly for Phase 6
+  
+  # FMRIPREP OUTPUTS
+  derivatives_dir: "/storage/data/MRI/MRI_Modulation/fmri-pipeline-test/derivatives"
+  fmriprep_work: "/storage/data/MRI/MRI_Modulation/fmri-pipeline-test/work/fmriprep_work"
 
   # 行为日志汇总文件 (用于 Phase 3 决策)
   behavior_logs_summary: "/storage/data/MRI/MRI_Modulation/test_tmp/time_audit/audit_group_summary.csv"
+
+# ==========================================
+# 1.5 fMRIPrep 配置 (Phase 6)
+# ==========================================
+fmriprep:
+  engine: "singularity"
+  # TODO: 确保此路径指向你下载的 fmriprep.sif
+  image: "../fmriprep.sif"
+  
+  # 必须提供 FreeSurfer 授权文件
+  # TODO: 确保此路径正确或已设置环境变量 FS_LICENSE
+  fs_license_file: "/storage/data/MRI/MRI_Modulation/license.txt"
+  
+  # 运行特定的被试 (空则运行全部)
+  participant_labels: []
+  
+  # 额外的 fMRIPrep 参数
+  extra_args:
+    - "--fs-no-reconall"    # 默认禁用，加快速度
+    - "--skip_bids_validation"
+    - "--nprocs"
+    - "8"
+    - "--mem_mb"
+    - "32000"
+    - "--output-spaces"
+    - "MNI152NLin2009cAsym:res-2"
+
+# ==========================================
+# 1.6 提取配置 (Feature Extraction)
+# ==========================================
+extract:
+  # 自动推断 (derivatives_dir/fmriprep)
+  fmriprep_dir: ""
+  # 提取后的 numpy 数组存放位置
+  arrays_dir: "/storage/data/MRI/MRI_Modulation/fmri-pipeline-test/work/arrays"
 # ==========================================
 # 2. 工具配置 (External Tools)
 # ==========================================
