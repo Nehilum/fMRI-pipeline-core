@@ -38,6 +38,10 @@ Run the actual preprocessing:
 singularity exec --bind .:/app,/storage:/storage ../neuro-mod.sif \
     python3 -m neuro_mod.cli fmriprep run --config configs/server_test.yaml
 ```
-
+```bash
+singularity exec --bind .:/app,/storage:/storage ../neuro-mod.sif \
+    python3 -m neuro_mod.cli fmriprep run --config configs/server_test.yaml --dry-run > run_fmriprep.sh
+bash run_fmriprep.sh
+```
 ## Help
 Run `singularity exec ../neuro-mod.sif python3 -m neuro_mod.cli --help` for full command documentation.
