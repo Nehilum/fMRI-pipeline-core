@@ -40,11 +40,11 @@ paths:
 fmriprep:
   engine: "singularity"
   # TODO: 确保此路径指向你下载的 fmriprep.sif
-  image: "../fmriprep.sif"
+  image: "/work/project/MRI_Modulation/fMRI-modulation/images/fmriprep.sif"
   
   # 必须提供 FreeSurfer 授权文件
   # TODO: 确保此路径正确或已设置环境变量 FS_LICENSE
-  fs_license_file: "/storage/data/MRI/MRI_Modulation/license.txt"
+  fs_license_file: "/work/project/MRI_Modulation/fMRI-modulation/.local/secrets/freesurfer/license.txt"
   
   # 运行特定的被试 (空则运行全部)
   participant_labels: []
