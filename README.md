@@ -22,21 +22,22 @@ The pipeline **does not** parse E-Prime, Psychtoolbox, or PsychoPy logs. Instead
 
 > **Note**: We provide templates for these inputs in the `templates/` directory, including a boilerplate Python parser (`behavior_parser_template.py`) you can adapt for your own experiments.
 
-## Distribution & Deployment Philosophy
+## Distribution & Deployment Philosophy (Docker vs. Singularity)
 
 `fMRI-pipeline-core` is designed to be a universal toolbox. We separate **Code** from **Environment**:
 
 1.  **Local Development (Mac/PC)**:
-    - No containers needed.
-    - Simply `pip install -e .` or `conda env create`.
+    - No containers needed. Simply `pip install -e .` or `conda env create`.
     - Recommended for script development and interactive Phase 3 mapping.
 
-2.  **Cluster Execution (HPC)**:
-    - Use the provided `neuro-mod.def` or `Dockerfile` to build an environment image (`.sif`).
-    - The code resides inside the image for "one-click" reliability.
+2.  **Open-Source Distribution (Docker)**:
+    - For general users and the wider BIDS community, Docker is the universal standard for shipping environments. A Dockerfile is provided to build or pull the image anywhere.
 
-3.  **Where to put the .sif file?**
-    - **Never** commit `.sif` files to Git.
-    - Store the built image in your **Cluster's Shared Storage** (e.g., `/storage/group/bin/`) or in your specific **Study Folder**.
+3.  **Cluster Execution / HPC (Singularity)**:
+    - High-Performance Computing (HPC) clusters usually prohibit Docker (requires root). Therefore, **Singularity (Apptainer)** is the execution standard.
+    - Users can effortlessly convert the Docker image to a Singularity image for server use:
+      `singularity build neuro-mod.sif docker://your-username/neuro-mod`
+    - Alternatively, use the provided `neuro-mod.def` to build the `.sif` file directly.
+    - **Where to put the .sif file?** Never commit `.sif` files to Git. Store the built image in your Cluster's Shared Storage (e.g., `/storage/group/bin/`).
 ## Philosophy
 Please read our [Design Philosophy](DESIGN_PHILOSOPHY.md) to understand why this project embraces interactive checkpoints over black-box automation.
