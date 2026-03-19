@@ -13,6 +13,15 @@ Built on the philosophy of **Guided Checkpoints**, it allows researchers to easi
 - Python 3.9+
 - For Phase 6 only: Docker or Singularity installed on your system/cluster.
 
+## The Behavior Data Contract (Input Requirements)
+To make `fMRI-pipeline-core` universally applicable, it enforces a strict boundary between project-specific data logging and standardized pipelining.
+
+The pipeline **does not** parse E-Prime, Psychtoolbox, or PsychoPy logs. Instead, your project must provide two standardized inputs:
+1. **Behavior Summary CSV (`audit_group_summary.csv`)**: Used by Phase 3 MTAAS to temporally align your scans and identify aborted runs. Must contain `Subject`, `Date`, `Log_Filename`, `Log_Time`, and `Task`.
+2. **BIDS Events (`_events.tsv`)**: Standard BIDS event files for Phase 5 injection.
+
+> **Note**: We provide templates for these inputs in the `templates/` directory, including a boilerplate Python parser (`behavior_parser_template.py`) you can adapt for your own experiments.
+
 ## Distribution & Deployment Philosophy
 
 `fMRI-pipeline-core` is designed to be a universal toolbox. We separate **Code** from **Environment**:
