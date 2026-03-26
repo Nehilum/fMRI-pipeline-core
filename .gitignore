@@ -84,3 +84,7 @@ coverage.xml
 # Build/Container
 *.sif
 *.img
+
+# Generated files
+outputs/
+*.sh
