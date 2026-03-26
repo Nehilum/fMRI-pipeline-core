@@ -151,11 +151,67 @@ class StandardZipStrategy(IngestStrategy):
             if temp_extract_path.exists():
                 shutil.rmtree(temp_extract_path)
 
+class DirectDirectoryStrategy(IngestStrategy):
+    """
+    直接扫描已组织好的 DICOM 目录，不做任何复制或解压。
+    适用结构: dicom_dir/{Subject}/{Session}/{Scan}/*.dcm
+    """
+    def run(self) -> List[ConversionEntry]:
+        entries = []
+        if not self.target_root.exists():
+            logger.error(f"Target DICOM root not found: {self.target_root}")
+            return []
+
+        # 遍历 Subject
+        for subject_dir in [d for d in self.target_root.iterdir() if d.is_dir()]:
+            # 遍历 Session
+            for session_dir in [d for d in subject_dir.iterdir() if d.is_dir()]:
+                # 遍历 Scan
+                for scan_dir in [d for d in session_dir.iterdir() if d.is_dir()]:
+                    
+                    files = [f for f in scan_dir.iterdir() if f.is_file()]
+                    if not files:
+                        continue
+
+                    # 1. 创建 Identity
+                    identity = SeriesIdentity(
+                        subject_id_raw=subject_dir.name,
+                        date_folder=session_dir.name,
+                        scan_folder=scan_dir.name,
+                        time_str_raw="" # 如果需要，可实现正则提取
+                    )
+
+                    # 2. 指定 Dicom Path (原地指向当前的 Scan 文件夹)
+                    dicom = DicomArtifacts(
+                        dicom_path=scan_dir
+                    )
+
+                    # 3. 封装 Record
+                    source_info = SeriesRecord(
+                        identity=identity,
+                        dicom=dicom,
+                        nifti_pool=None
+                    )
+
+                    # 4. 创建 Entry
+                    entry_id = f"{subject_dir.name}_{session_dir.name}_{scan_dir.name}"
+                    entry = ConversionEntry(id=entry_id, source=source_info)
+                    
+                    entries.append(entry)
+                    logger.info(f"Directly ingested: {entry_id}")
+
+        return entries
+
 def get_ingestor(config: dict) -> IngestStrategy:
     """工厂方法：根据配置返回对应的策略"""
     source = Path(config['paths']['raw_data_dir'])
     target = Path(config['paths']['dicom_dir'])
     
-    # 将来可以在 config 中增加 'ingest_strategy' 字段来切换
-    # 目前默认返回 StandardZipStrategy
-    return StandardZipStrategy(source, target)
+    strategy_name = config['paths'].get('ingest_strategy', 'standard_zip')
+    
+    if strategy_name == 'direct_scan':
+        # 对于 direct_scan，target 就是已经组装好的 DICOM 根目录，source 可忽略
+        return DirectDirectoryStrategy(target, target)
+    else:
+        # 默认使用 standard_zip
+        return StandardZipStrategy(source, target)

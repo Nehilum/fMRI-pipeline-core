@@ -5,6 +5,7 @@ paths:
   # 输入：原始 DICOM 根目录
   raw_data_dir: "./data/raw"      # 对应 Phase 1 输入 (Zip)
   dicom_dir: "./data/dicom_test"       # 对应 Phase 1 输出 / Phase 2 输入
+  ingest_strategy: "standard_zip" # [新增] Options: "standard_zip" (解压), "direct_scan" (跳过解压直接扫描dicom_dir)
   
   # 中间产物：工作目录 (新架构核心)
   work_dir: "./work_test"
