@@ -1,6 +1,0 @@
-Traceback (most recent call last):
-  File "/app/src/neuro_mod/phase_preproc/fmriprep_cli.py", line 166, in main
-    args.func(args)
-  File "/app/src/neuro_mod/phase_preproc/fmriprep_cli.py", line 101, in _cmd_run
-    Path(cfg.paths["derivatives_dir"]).mkdir(parents=True, exist_ok=True)
-KeyError: 'derivatives_dir'
