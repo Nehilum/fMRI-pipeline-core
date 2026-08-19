@@ -7,6 +7,7 @@ name = "neuro-mod"
 version = "0.1.0"
 description = "A robust fMRI pipeline for BIDS conversion, pre-processing wrapping, and statistical analysis."
 readme = "README.md"
+license = {text = "MIT"}
 requires-python = ">=3.9"
 dependencies = [
     "typer>=0.9.0",
